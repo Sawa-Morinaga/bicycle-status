@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>駐輪場空き状況確認アプリ（サンプル）</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: #2563eb;
+            color: white;
+            padding: 16px;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        .tabs {
+            display: flex;
+            background: #e2e8f0;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            background: #e2e8f0;
+            border: none;
+            transition: 0.2s;
+        }
+        .tab.active {
+            background: #fff;
+            color: #2563eb;
+            border-bottom: 2px solid #2563eb;
+        }
+        .content {
+            padding: 20px;
+            min-height: 350px;
+        }
+        .view {
+            display: none;
+        }
+        .view.active {
+            display: block;
+        }
+        /* 一覧ビュー */
+        .parking-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .parking-item:hover {
+            background: #f8fafc;
+        }
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .badge.green { background: #dcfce7; color: #166534; }
+        .badge.orange { background: #ffedd5; color: #9a3412; }
+        .badge.red { background: #fee2e2; color: #991b1b; }
+
+        /* 地図ビュー */
+        .map-mock {
+            background: #e0f2fe;
+            border: 2px dashed #38bdf8;
+            border-radius: 8px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin-bottom: 15px;
+        }
+        .map-pin {
+            position: absolute;
+            background: #ef4444;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* 詳細ビュー（空き位置グリッド） */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+        .spot {
+            aspect-ratio: 1;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        .spot.available { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .spot.occupied { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+        .back-btn {
+            background: none;
+            border: none;
+            color: #2563eb;
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 0;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>大学駐輪場 空き状況システム</header>
+    
+    <!-- タブ切り替え -->
+    <div class="tabs">
+        <button class="tab active" onclick="switchView('list')">1. 一覧比較</button>
+        <button class="tab" onclick="switchView('map')">2. 地図選択</button>
+        <button class="tab" onclick="switchView('detail')">3. 詳細空き状況</button>
+    </div>
+
+    <div class="content">
+        <!-- ビュー1: 一覧から比較 -->
+        <div id="view-list" class="view active">
+            <p style="font-size: 0.9rem; color: #64748b;">キャンパス内の各駐輪場の混雑状況一覧です。タップすると詳細を確認できます。</p>
+            <div class="parking-item" onclick="switchView('detail')">
+                <div>
+                    <strong>第1駐輪場（講義棟前）</strong><br>
+                    <small style="color: #64748b;">屋根あり・ラック式</small>
+                </div>
+                <span class="badge green">空き多 (15台)</span>
+            </div>
+            <div class="parking-item" onclick="switchView('detail')">
+                <div>
+                    <strong>第2駐輪場（食堂横）</strong><br>
+                    <small style="color: #64748b;">屋根なし・平面式</small>
+                </div>
+                <span class="badge orange">やや混雑 (4台)</span>
+            </div>
+            <div class="parking-item" onclick="switchView('detail')">
+                <div>
+                    <strong>第3駐輪場（体育館前）</strong><br>
+                    <small style="color: #64748b;">屋根あり・ラック式</small>
+                </div>
+                <span class="badge red">満車 (0台)</span>
+            </div>
+        </div>
+
+        <!-- ビュー2: 地図から選択 -->
+        <div id="view-map" class="view">
+            <p style="font-size: 0.9rem; color: #64748b;">マップ上のピンをタップして場所を選びます。</p>
+            <div class="map-mock">
+                <div class="map-pin" style="top: 30px; left: 40px;" onclick="switchView('detail')">第1駐輪場 (空き15)</div>
+                <div class="map-pin" style="top: 110px; left: 200px; background: #f97316;" onclick="switchView('detail')">第2駐輪場 (空き4)</div>
+                <div class="map-pin" style="top: 140px; left: 60px; background: #dc2626;" onclick="switchView('detail')">第3駐輪場 (満車)</div>
+            </div>
+        </div>
+
+        <!-- ビュー3: 具体的な空き位置を確認 -->
+        <div id="view-detail" class="view">
+            <button class="back-btn" onclick="switchView('list')">← 一覧に戻る</button>
+            <h3 style="margin: 0 0 5px 0; font-size: 1rem;">第1駐輪場（講義棟前）の空き状況</h3>
+            <p style="font-size: 0.8rem; color: #64748b; margin-top: 0;">カメラの画像処理による判定結果（リアルタイム表示）</p>
+            
+            <div class="legend">
+                <div class="legend-item"><div class="legend-color" style="background: #dcfce7; border: 1px solid #86efac;"></div>空き</div>
+                <div class="legend-item"><div class="legend-color" style="background: #fee2e2; border: 1px solid #fca5a5;"></div>駐車中</div>
+            </div>
+
+            <div class="grid-container">
+                <div class="spot available">101</div>
+                <div class="spot occupied">102</div>
+                <div class="spot available">103</div>
+                <div class="spot available">104</div>
+                <div class="spot occupied">105</div>
+                <div class="spot occupied">106</div>
+                <div class="spot available">107</div>
+                <div class="spot available">108</div>
+                <div class="spot available">109</div>
+                <div class="spot occupied">110</div>
+                <div class="spot available">111</div>
+                <div class="spot available">112</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchView(viewName) {
+        // すべてのビューを非表示
+        document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+        // すべてのタブのアクティブを解除
+        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        
+        // 選択されたビューを表示
+        document.getElementById('view-view-' + viewName) || document.getElementById('view-' + viewName).classList.add('active');
+        
+        // タブの切り替え判定（詳細タブは非連動または一覧にハイライト）
+        if(viewName === 'list') {
+            document.querySelectorAll('.tab')[0].classList.add('active');
+        } else if(viewName === 'map') {
+            document.querySelectorAll('.tab')[1].classList.add('active');
+        } else if(viewName === 'detail') {
+            document.querySelectorAll('.tab')[2].classList.add('active');
+        }
+    }
+</script>
+
+</body>
+</html>
